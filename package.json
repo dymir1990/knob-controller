@@ -1,0 +1,19 @@
+{
+  "name": "knob-controller",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "castv2-client": "^1.2.0",
+    "mdns-js": "^1.0.3",
+    "node-hid": "^3.3.0",
+    "usb": "^2.17.0"
+  }
+}

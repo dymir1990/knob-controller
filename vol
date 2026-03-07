@@ -1,0 +1,273 @@
+#!/usr/bin/env python3.14
+"""
+vol - Unified volume controller for A15, Nest Hub, and Mac system audio.
+
+Usage:
+    vol                     Show all volumes
+    vol a15 50              Set A15 to 50%
+    vol hub 30              Set Nest Hub to 30%
+    vol mac 70              Set Mac system to 70%
+    vol all 40              Set ALL devices to 40%
+    vol a15 +10             Increase A15 by 10%
+    vol hub -5              Decrease Nest Hub by 5%
+    vol a15 mute            Mute A15
+    vol hub mute            Mute/unmute Nest Hub
+    vol mac mute            Mute/unmute Mac
+    vol all mute            Mute everything
+"""
+
+import sys
+import asyncio
+import subprocess
+import concurrent.futures
+
+VENV_SITE = "/Users/dymirtatem/Desktop/Projects/knob-controller/venv/lib/python3.14/site-packages"
+sys.path.insert(0, VENV_SITE)
+
+_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+
+
+# ─── Mac System Volume ───
+def get_mac_volume():
+    try:
+        out = subprocess.check_output(
+            ["osascript", "-e", "output volume of (get volume settings)"], text=True
+        )
+        return int(out.strip())
+    except Exception:
+        return -1
+
+
+def get_mac_muted():
+    try:
+        out = subprocess.check_output(
+            ["osascript", "-e", "output muted of (get volume settings)"], text=True
+        )
+        return out.strip() == "true"
+    except Exception:
+        return False
+
+
+def set_mac_volume(vol):
+    vol = max(0, min(100, vol))
+    subprocess.run(["osascript", "-e", f"set volume output volume {vol}"], check=False)
+    return vol
+
+
+def toggle_mac_mute():
+    muted = get_mac_muted()
+    subprocess.run(["osascript", "-e", f"set volume output muted {not muted}"], check=False)
+    return not muted
+
+
+# ─── A15 (AirPlay via pyatv) ───
+async def get_a15_volume():
+    from pyatv import scan, connect
+    devs = await scan(asyncio.get_event_loop(), timeout=5)
+    a15 = [d for d in devs if "A15" in d.name]
+    if not a15:
+        return None, None
+    atv = await connect(a15[0], asyncio.get_event_loop())
+    try:
+        vol = atv.audio.volume
+        return vol, atv
+    except Exception:
+        atv.close()
+        return None, None
+
+
+async def set_a15_volume(target):
+    from pyatv import scan, connect
+    devs = await scan(asyncio.get_event_loop(), timeout=5)
+    a15 = [d for d in devs if "A15" in d.name]
+    if not a15:
+        print("A15 not found on network")
+        return
+    atv = await connect(a15[0], asyncio.get_event_loop())
+    try:
+        target = max(0, min(100, target))
+        await atv.audio.set_volume(target)
+        print(f"A15: {target}%")
+    except Exception as e:
+        print(f"A15 error: {e}")
+    finally:
+        atv.close()
+
+
+# ─── Nest Hub (Cast via pychromecast, run in thread to avoid asyncio conflict) ───
+def _hub_get_volume_sync():
+    import pychromecast
+    casts, browser = pychromecast.get_chromecasts(timeout=10)
+    for c in casts:
+        c.wait(timeout=5)
+    hub = [c for c in casts if c.name == "Living Room Display"]
+    if not hub:
+        browser.stop_discovery()
+        return None, None
+    h = hub[0]
+    vol = int(h.status.volume_level * 100)
+    muted = h.status.volume_muted
+    browser.stop_discovery()
+    return vol, muted
+
+
+def _hub_set_volume_sync(target):
+    import pychromecast
+    casts, browser = pychromecast.get_chromecasts(timeout=10)
+    for c in casts:
+        c.wait(timeout=5)
+    hub = [c for c in casts if c.name == "Living Room Display"]
+    if not hub:
+        browser.stop_discovery()
+        return None
+    h = hub[0]
+    target = max(0, min(100, target))
+    h.set_volume(target / 100.0)
+    h.disconnect()
+    browser.stop_discovery()
+    return target
+
+
+def _hub_toggle_mute_sync():
+    import pychromecast
+    casts, browser = pychromecast.get_chromecasts(timeout=10)
+    for c in casts:
+        c.wait(timeout=5)
+    hub = [c for c in casts if c.name == "Living Room Display"]
+    if not hub:
+        browser.stop_discovery()
+        return None
+    h = hub[0]
+    new_muted = not h.status.volume_muted
+    h.set_volume_muted(new_muted)
+    h.disconnect()
+    browser.stop_discovery()
+    return new_muted
+
+
+async def get_hub_volume():
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, _hub_get_volume_sync)
+
+
+async def set_hub_volume(target):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(_executor, _hub_set_volume_sync, target)
+    if result is not None:
+        print(f"Hub: {result}%")
+    else:
+        print("Nest Hub not found")
+
+
+async def toggle_hub_mute():
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(_executor, _hub_toggle_mute_sync)
+    if result is not None:
+        print(f"Hub: {'muted' if result else 'unmuted'}")
+    else:
+        print("Nest Hub not found")
+
+
+# ─── Status Display ───
+async def show_status():
+    mac_vol = get_mac_volume()
+    mac_muted = get_mac_muted()
+
+    # Run A15 and Hub discovery in parallel
+    a15_task = asyncio.create_task(get_a15_volume())
+    hub_task = asyncio.create_task(get_hub_volume())
+
+    a15_vol, a15_atv = await a15_task
+    if a15_atv:
+        a15_atv.close()
+
+    hub_result = await hub_task
+    hub_vol, hub_muted = hub_result if hub_result != (None, None) else (None, None)
+
+    print("--- Volume Status ---")
+    mute_str = " (MUTED)" if mac_muted else ""
+    print(f"  Mac:  {mac_vol}%{mute_str}")
+
+    if a15_vol is not None:
+        print(f"  A15:  {int(a15_vol)}%")
+    else:
+        print("  A15:  offline")
+
+    if hub_vol is not None:
+        mute_str = " (MUTED)" if hub_muted else ""
+        print(f"  Hub:  {hub_vol}%{mute_str}")
+    else:
+        print("  Hub:  offline")
+
+
+# ─── Parse & Execute ───
+async def handle_device(device, value):
+    if value == "mute":
+        if device == "mac":
+            muted = toggle_mac_mute()
+            print(f"Mac: {'muted' if muted else 'unmuted'}")
+        elif device == "a15":
+            await set_a15_volume(0)
+        elif device == "hub":
+            await toggle_hub_mute()
+        elif device == "all":
+            toggle_mac_mute()
+            await asyncio.gather(toggle_hub_mute(), set_a15_volume(0))
+        return
+
+    if value.startswith("+") or value.startswith("-"):
+        delta = int(value)
+        if device in ("mac", "all"):
+            new = set_mac_volume(get_mac_volume() + delta)
+            print(f"Mac: {new}%")
+        if device in ("a15", "all"):
+            a15_vol, atv = await get_a15_volume()
+            if atv:
+                atv.close()
+            if a15_vol is not None:
+                await set_a15_volume(int(a15_vol) + delta)
+            else:
+                print("A15: offline")
+        if device in ("hub", "all"):
+            hub_vol, _ = await get_hub_volume()
+            if hub_vol is not None:
+                await set_hub_volume(hub_vol + delta)
+            else:
+                print("Hub: offline")
+    else:
+        target = int(value)
+        tasks = []
+        if device in ("mac", "all"):
+            new = set_mac_volume(target)
+            print(f"Mac: {new}%")
+        if device in ("a15", "all"):
+            tasks.append(set_a15_volume(target))
+        if device in ("hub", "all"):
+            tasks.append(set_hub_volume(target))
+        if tasks:
+            await asyncio.gather(*tasks)
+
+
+async def main():
+    args = sys.argv[1:]
+
+    if not args:
+        await show_status()
+        return
+
+    device = args[0].lower()
+    if device not in ("mac", "a15", "hub", "all"):
+        print(f"Unknown device: {device}")
+        print("Devices: mac, a15, hub, all")
+        return
+
+    if len(args) < 2:
+        print("Usage: vol <device> <value|+/-delta|mute>")
+        return
+
+    value = args[1].lower()
+    await handle_device(device, value)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

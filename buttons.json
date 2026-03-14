@@ -1,0 +1,50 @@
+[
+  {
+    "key": 1,
+    "label": "VS Code",
+    "action": "app",
+    "target": "Visual Studio Code",
+    "color": "#007ACC",
+    "icon_text": "VS"
+  },
+  {
+    "key": 2,
+    "label": "Projects",
+    "action": "folder",
+    "target": "/Users/dymirtatem/Desktop/Projects",
+    "color": "#3B82F6",
+    "icon_text": "PRJ"
+  },
+  {
+    "key": 3,
+    "label": "Downloads",
+    "action": "folder",
+    "target": "/Users/dymirtatem/Downloads",
+    "color": "#8B5CF6",
+    "icon_text": "DL"
+  },
+  {
+    "key": 4,
+    "label": "FSCNJ",
+    "action": "url",
+    "target": "https://fscnj.com",
+    "color": "#059669",
+    "icon_text": "FSC"
+  },
+  {
+    "key": 5,
+    "label": "Portal",
+    "action": "url",
+    "target": "https://app.fscnj.com",
+    "color": "#10B981",
+    "icon_text": "APP"
+  },
+  {
+    "key": 6,
+    "label": "A15",
+    "action": "airplay",
+    "target": "A15",
+    "color": "#EF4444",
+    "icon_text": "A15"
+  }
+]

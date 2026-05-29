@@ -7,7 +7,7 @@ IOKit restrictions that block node-hid and standard hidapi).
 
 Knobs:
   Big knob (KNOB_3)       -> Mac system volume (press to mute)
-  Bottom-right (KNOB_2)   -> Nest Hub volume (press to mute)
+  Bottom-right (KNOB_2)   -> Audio Pro C10 MkII volume (press to mute)
   Bottom-left (KNOB_1)    -> A15 volume (press to mute)
 
 Buttons (KEY_1-KEY_6):
@@ -29,7 +29,9 @@ from StreamDock.DeviceManager import DeviceManager
 from StreamDock.InputTypes import EventType, KnobId, Direction, ButtonKey
 
 # ─── Config ───
-NEST_HUB_NAME = "Living Room Display"
+# Bottom-right knob target. Audio Pro C10 MkII has Chromecast built-in,
+# so it's controlled as a cast device (same path as the Nest Hub / A15).
+NEST_HUB_NAME = "AudioPro_C10MkII_2648"
 SYSTEM_VOL_STEP = 5
 CAST_VOL_STEP = 5  # percentage
 BUTTONS_CONFIG = os.path.join(os.path.dirname(__file__), "buttons.json")
@@ -301,7 +303,7 @@ def on_event(event):
             delta = SYSTEM_VOL_STEP if event.direction == Direction.RIGHT else -SYSTEM_VOL_STEP
             current = get_mac_volume()
             set_mac_volume(current + delta)
-        elif event.knob_id == KnobId.KNOB_2:  # Bottom-right -> Nest Hub
+        elif event.knob_id == KnobId.KNOB_2:  # Bottom-right -> C10 MkII
             delta = CAST_VOL_STEP if event.direction == Direction.RIGHT else -CAST_VOL_STEP
             hub_adjust(delta)
         elif event.knob_id == KnobId.KNOB_1:  # Bottom-left -> A15
@@ -350,7 +352,7 @@ def main():
 
     print("\nKnob Controller running!", flush=True)
     print("  Big knob       -> Mac volume (press to mute)", flush=True)
-    print("  Bottom-right   -> Nest Hub volume (press to mute)", flush=True)
+    print("  Bottom-right   -> C10 MkII volume (press to mute)", flush=True)
     print("  Bottom-left    -> A15 volume (press to mute)", flush=True)
     for key, btn in _button_map.items():
         print(f"  Key {key.value}          -> {btn['label']} ({btn['action']})", flush=True)

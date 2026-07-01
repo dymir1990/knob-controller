@@ -6,8 +6,8 @@ Uses the proprietary libtransport C library for HID access (bypasses macOS Tahoe
 IOKit restrictions that block node-hid and standard hidapi).
 
 Knobs:
-  Big knob (KNOB_3)       -> Mac system volume (press to mute)
-  Bottom-right (KNOB_2)   -> Audio Pro C10 MkII volume (press to mute)
+  Big knob (KNOB_3)       -> Audio Pro C10 MkII volume (press to mute)
+  Bottom-right (KNOB_2)   -> Mac system volume (press to mute)
   Bottom-left (KNOB_1)    -> A15 volume (press to mute)
 
 Buttons (KEY_1-KEY_6):
@@ -299,22 +299,22 @@ def on_event(event):
         return
 
     if event.event_type == EventType.KNOB_ROTATE:
-        if event.knob_id == KnobId.KNOB_3:  # Big knob -> Mac volume
+        if event.knob_id == KnobId.KNOB_3:  # Big knob -> C10 MkII
+            delta = CAST_VOL_STEP if event.direction == Direction.RIGHT else -CAST_VOL_STEP
+            hub_adjust(delta)
+        elif event.knob_id == KnobId.KNOB_2:  # Bottom-right -> Mac volume
             delta = SYSTEM_VOL_STEP if event.direction == Direction.RIGHT else -SYSTEM_VOL_STEP
             current = get_mac_volume()
             set_mac_volume(current + delta)
-        elif event.knob_id == KnobId.KNOB_2:  # Bottom-right -> C10 MkII
-            delta = CAST_VOL_STEP if event.direction == Direction.RIGHT else -CAST_VOL_STEP
-            hub_adjust(delta)
         elif event.knob_id == KnobId.KNOB_1:  # Bottom-left -> A15
             delta = SYSTEM_VOL_STEP if event.direction == Direction.RIGHT else -SYSTEM_VOL_STEP
             a15_adjust(delta)
 
     elif event.event_type == EventType.KNOB_PRESS and event.state == 1:
         if event.knob_id == KnobId.KNOB_3:
-            toggle_mac_mute()
-        elif event.knob_id == KnobId.KNOB_2:
             hub_mute()
+        elif event.knob_id == KnobId.KNOB_2:
+            toggle_mac_mute()
         elif event.knob_id == KnobId.KNOB_1:
             a15_toggle()
 
@@ -351,8 +351,8 @@ def main():
     _executor.submit(_get_a15)
 
     print("\nKnob Controller running!", flush=True)
-    print("  Big knob       -> Mac volume (press to mute)", flush=True)
-    print("  Bottom-right   -> C10 MkII volume (press to mute)", flush=True)
+    print("  Big knob       -> C10 MkII volume (press to mute)", flush=True)
+    print("  Bottom-right   -> Mac volume (press to mute)", flush=True)
     print("  Bottom-left    -> A15 volume (press to mute)", flush=True)
     for key, btn in _button_map.items():
         print(f"  Key {key.value}          -> {btn['label']} ({btn['action']})", flush=True)

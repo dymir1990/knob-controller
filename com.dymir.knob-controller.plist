@@ -6,7 +6,7 @@
     <string>com.dymir.knob-controller</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/python3</string>
+        <string>/opt/knob-controller/venv/bin/python3</string>
         <string>/opt/knob-controller/daemon.py</string>
     </array>
     <key>WorkingDirectory</key>
@@ -16,9 +16,9 @@
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/tmp/knob-controller.log</string>
+    <string>/Library/Logs/knob-controller/out.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/knob-controller.err</string>
+    <string>/Library/Logs/knob-controller/err.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

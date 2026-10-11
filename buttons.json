@@ -33,11 +33,11 @@
   },
   {
     "key": 5,
-    "label": "Portal",
-    "action": "url",
-    "target": "https://app.fscnj.com",
-    "color": "#10B981",
-    "icon_text": "APP"
+    "label": "C-Sub",
+    "action": "csub_toggle",
+    "target": "10.0.0.5",
+    "color": "#EF4444",
+    "icon_text": "SUB"
   },
   {
     "key": 6,
